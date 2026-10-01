@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="Dispatch.AppHost/Dispatch.AppHost.csproj" />
+  <Project Path="Dispatch.Server/Dispatch.Server.csproj" />
+  <Project Path="Dispatch.ServiceDefaults/Dispatch.ServiceDefaults.csproj" />
+  <Project Path="Dispatch.Web/Dispatch.Web.csproj" />
+</Solution>

@@ -1,0 +1,61 @@
+@using Dispatch.Kit.Models
+
+@inject IJSRuntime Javascript
+@inject ISnackbar Snackbar
+
+<MudPaper Outlined Elevation="0" Class="@($"rounded-lg pa-4 {(Dead ? "mud-text-disabled" : "")}")">
+    <MudStack Row AlignItems="AlignItems.Center">
+        <MudText Typo="Typo.h6">
+            <MudLink Href="@Href">@Handler.Title</MudLink>
+        </MudText>
+        @if (Dead)
+        {
+            <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Text"
+                     Icon="@Icons.Material.TwoTone.Schedule">
+                Pending deletion
+            </MudChip>
+        }
+        <MudSpacer/>
+        <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense
+                 AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+            <MudMenuItem Icon="@Icons.Material.TwoTone.ContentCopy" IconColor="Color.Info"
+                         OnClick="@(() => CopySlug(Handler))">
+                Copy slug
+            </MudMenuItem>
+            <MudMenuItem Icon="@Icons.Material.TwoTone.Delete" IconColor="Color.Error" Disabled="@Dead">
+                Delete
+            </MudMenuItem>
+        </MudMenu>
+    </MudStack>
+
+    <MudText Typo="Typo.body2" Class="@($"mt-1 {(Dead ? "" : "mud-text-secondary")}")">
+        @(string.IsNullOrWhiteSpace(Handler.Description) ? "No description" : Handler.Description)
+    </MudText>
+
+    <MudStack Row AlignItems="AlignItems.Center" Class="mt-3">
+        <MudTooltip Text="Click to copy">
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
+                     Icon="@Icons.Material.TwoTone.Tag" OnClick="@(() => CopySlug(Handler))">
+                @Handler.Slug
+            </MudChip>
+        </MudTooltip>
+        <MudSpacer/>
+        <MudTooltip Text="@Handler.CreatedAt.ToLocalTime().ToString("f")">
+            <MudText Typo="Typo.caption">@Handler.CreatedAt.ToLocalTime().ToString("d MMM yyyy")</MudText>
+        </MudTooltip>
+    </MudStack>
+</MudPaper>
+
+@code {
+    [Parameter] public required HandlerData Handler { get; set; }
+    
+    private string Href => $"handlers/{Handler.Id}";
+    
+    private bool Dead => Handler.DeletedAt is not null;
+
+    private async Task CopySlug(HandlerData handler)
+    {
+        await Javascript.InvokeVoidAsync("navigator.clipboard.writeText", handler.Slug);
+        Snackbar.Add("Copied!", Severity.Success, snackbar => snackbar.SnackbarVariant = Variant.Text);
+    }
+}

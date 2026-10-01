@@ -1,0 +1,22 @@
+<MudChip Variant="Variant.Text" Icon="@Icons.Material.TwoTone.Circle" IconColor="@IconColor" Value="@StatusText" />
+
+@code {
+    private const string Healthy = nameof(Healthy);
+    private const string Degraded = nameof(Degraded);
+    private const string Unreachable = nameof(Unreachable);
+    
+    [Parameter] public string? Status { get; set; }
+
+    private Color IconColor => Status switch
+    {
+        Healthy => Color.Success,
+        Degraded => Color.Warning,
+        _ => Color.Default
+    };
+
+    private string StatusText => Status switch
+    {
+        Healthy or Degraded=> $"Service {Status}",
+        _ => $"Service {Unreachable}"
+    };
+}

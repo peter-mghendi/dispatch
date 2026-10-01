@@ -1,0 +1,113 @@
+@using Dispatch.Web.Components
+@inherits LayoutComponentBase
+@implements IDisposable
+
+@inject HttpClient Http
+
+<MudThemeProvider Theme="@Theme" IsDarkMode="@_dark"/>
+<MudPopoverProvider/>
+<MudDialogProvider/>
+<MudSnackbarProvider/>
+
+<MudLayout>
+    <MudAppBar Elevation="0">
+        <MudText Typo="Typo.h6" Class="ml-2">dispatch</MudText>
+        <MudSpacer/>
+        <HealthChip Status="@_health"/>
+        <MudIconButton Color="Color.Inherit" Icon="@ToggleDarkModeButtonIcon" OnClick="@ToggleDarkMode"/>
+    </MudAppBar>
+
+    <MudMainContent Class="pt-16 pa-4">
+        <MudContainer MaxWidth="MaxWidth.Large" Class="pt-4">
+            @Body
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
+
+@code {
+    private string? _health;
+    private bool _dark = true;
+    private PeriodicTimer? _heartbeat;
+
+    private readonly CancellationTokenSource _cts = new();
+    private static readonly MudTheme Theme = BuildTheme();
+    private static readonly TimeSpan HeartbeatInterval = TimeSpan.FromSeconds(5);
+
+    private string ToggleDarkModeButtonIcon => _dark switch
+    {
+        true => Icons.Material.TwoTone.AutoMode,
+        false => Icons.Material.TwoTone.DarkMode,
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        
+        _heartbeat =  new PeriodicTimer(HeartbeatInterval);
+        _ = RunTimerAsync();
+    }
+    
+    private async Task RunTimerAsync()
+    {
+        try
+        {
+            do
+            {
+                _health = await Http.GetStringAsync("/ready");
+                await InvokeAsync(StateHasChanged);
+            } while (await _heartbeat!.WaitForNextTickAsync(_cts.Token));
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    private void ToggleDarkMode() => _dark = !_dark;
+
+    private static MudTheme BuildTheme() => new()
+    {
+        PaletteLight = new PaletteLight
+        {
+            Black = "#110e2d",
+            AppbarText = "#424242",
+            AppbarBackground = "rgba(255,255,255,0.8)",
+            DrawerBackground = "#ffffff",
+            GrayLight = "#e8e8e8",
+            GrayLighter = "#f9f9f9",
+        },
+        PaletteDark = new PaletteDark
+        {
+            Primary = "#7e6fff",
+            Surface = "#1e1e2d",
+            Background = "#1a1a27",
+            BackgroundGray = "#151521",
+            AppbarText = "#92929f",
+            AppbarBackground = "rgba(26,26,39,0.8)",
+            DrawerBackground = "#1a1a27",
+            ActionDefault = "#74718e",
+            ActionDisabled = "#9999994d",
+            ActionDisabledBackground = "#605f6d4d",
+            TextPrimary = "#b2b0bf",
+            TextSecondary = "#92929f",
+            TextDisabled = "#ffffff33",
+            DrawerIcon = "#92929f",
+            DrawerText = "#92929f",
+            GrayLight = "#2a2833",
+            GrayLighter = "#1e1e2d",
+            Info = "#4a86ff",
+            Success = "#3dcb6c",
+            Warning = "#ffb545",
+            Error = "#ff3f5f",
+            LinesDefault = "#33323e",
+            TableLines = "#33323e",
+            Divider = "#292838",
+            OverlayLight = "#1e1e2d80",
+        },
+        LayoutProperties = new()
+    };
+
+    public void Dispose()
+    {
+        _cts.Cancel();
+        _heartbeat?.Dispose();
+        _cts.Dispose();
+    }
+}
