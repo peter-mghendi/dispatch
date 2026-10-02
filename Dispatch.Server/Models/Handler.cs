@@ -19,4 +19,4 @@ public class Handler
     public DateTimeOffset? DeletedAt { get; set; }
 
     public bool IsActive => DeletedAt is null;
-}
+}   

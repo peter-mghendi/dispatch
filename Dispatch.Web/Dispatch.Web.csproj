@@ -15,4 +15,8 @@
         <PackageReference Include="Microsoft.Extensions.ServiceDiscovery" />
         <PackageReference Include="MudBlazor" />
     </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Dispatch.Kit\Dispatch.Kit.csproj" />
+    </ItemGroup>
 </Project>

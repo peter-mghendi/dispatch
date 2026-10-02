@@ -1,6 +1,7 @@
+using Dispatch.Kit;
+using Dispatch.Web;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
-using Dispatch.Web;
 using MudBlazor.Services;
 
 const string server = nameof(server);
@@ -20,6 +21,7 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 
 builder.Services.AddMudServices();
 builder.Services.AddHttpClient(server, client => client.BaseAddress = new Uri($"https+http://{server}"));
+builder.Services.AddScoped<Client>();
 
 builder.Services.AddScoped(sp => sp.GetRequiredService<IHttpClientFactory>().CreateClient(server));
 

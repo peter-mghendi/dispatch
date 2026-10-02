@@ -1,8 +1,10 @@
+@using System.Net
+@using Dispatch.Kit
 @using Dispatch.Web.Components
 @inherits LayoutComponentBase
 @implements IDisposable
 
-@inject HttpClient Http
+@inject Client Dispatch
 
 <MudThemeProvider Theme="@Theme" IsDarkMode="@_dark"/>
 <MudPopoverProvider/>
@@ -53,7 +55,7 @@
         {
             do
             {
-                _health = await Http.GetStringAsync("/ready");
+                _health = await Dispatch.Health.FetchAsync();
                 await InvokeAsync(StateHasChanged);
             } while (await _heartbeat!.WaitForNextTickAsync(_cts.Token));
         }

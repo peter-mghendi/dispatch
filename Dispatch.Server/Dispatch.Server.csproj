@@ -20,6 +20,7 @@
     </ItemGroup>
 
     <ItemGroup>
+      <ProjectReference Include="..\Dispatch.Kit\Dispatch.Kit.csproj" />
       <ProjectReference Include="..\Dispatch.ServiceDefaults\Dispatch.ServiceDefaults.csproj" />
     </ItemGroup>
 </Project>

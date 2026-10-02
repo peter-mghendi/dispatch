@@ -406,6 +406,9 @@
           "System.Composition.Runtime": "9.0.0"
         }
       },
+      "dispatch.kit": {
+        "type": "Project"
+      },
       "dispatch.servicedefaults": {
         "type": "Project",
         "dependencies": {
