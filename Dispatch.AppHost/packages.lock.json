@@ -119,6 +119,15 @@
           "System.IO.Hashing": "10.0.8"
         }
       },
+      "CommunityToolkit.Aspire.Hosting.RustFs": {
+        "type": "Direct",
+        "requested": "[13.6.0, )",
+        "resolved": "13.6.0",
+        "contentHash": "K0u7pPsE8LcGBvLNXioKplwHgv9CSk2kMT4uBljOxqUg/bvEqNx22un9BoSYKcLNo95oLpRUokA2tlqdSb6vcw==",
+        "dependencies": {
+          "Aspire.Hosting": "13.6.0"
+        }
+      },
       "Aspire.Hosting": {
         "type": "Transitive",
         "resolved": "13.6.0",

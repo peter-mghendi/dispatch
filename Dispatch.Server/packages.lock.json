@@ -15,6 +15,15 @@
           "OpenTelemetry.Extensions.Hosting": "1.15.3"
         }
       },
+      "AWSSDK.S3": {
+        "type": "Direct",
+        "requested": "[4.0.104.1, )",
+        "resolved": "4.0.104.1",
+        "contentHash": "syEbfUR1Qjy9WS0fmg5MWOq0aGghq+pBIyrvDP3BFLc5K2OITxMiwbPkZhEJeAq8SWRn2bfVaWWmNLp8hS9VwQ==",
+        "dependencies": {
+          "AWSSDK.Core": "[4.0.102.8, 5.0.0)"
+        }
+      },
       "CmdScale.EntityFrameworkCore.TimescaleDB": {
         "type": "Direct",
         "requested": "[10.3.0, )",
@@ -77,6 +86,11 @@
           "Microsoft.EntityFrameworkCore.Relational": "[10.0.4, 11.0.0)",
           "Npgsql": "10.0.3"
         }
+      },
+      "AWSSDK.Core": {
+        "type": "Transitive",
+        "resolved": "4.0.102.8",
+        "contentHash": "90B9Skhl+ORbtWNXrrmGdGhGvAfZiPmZafRYrB/xHelZjePIwPvXioqz9UiiF1vo21eDLzTnXh5EC4RjbNWsFQ=="
       },
       "Humanizer.Core": {
         "type": "Transitive",

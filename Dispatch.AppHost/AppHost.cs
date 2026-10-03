@@ -2,18 +2,24 @@ using System.Net;
 
 var builder = DistributedApplication.CreateBuilder(args);
 
-var postgresUsername = builder.AddParameter(name: "cluster-username", secret: true);
-var postgresPassword = builder.AddParameter(name: "cluster-password", secret: true);
+var postgresUsername = builder.AddParameter(name: "postgres-username", secret: true);
+var postgresPassword = builder.AddParameter(name: "postgres-password", secret: true);
 
-var postgres = builder.AddPostgres(name: "postgres", postgresUsername, postgresPassword)
+var bucket = builder.AddRustFs("rustfs")
+    .WithDataVolume()
+    .WithLifetime(ContainerLifetime.Persistent)
+    .AddBucket("dispatch");
+
+var database = builder.AddPostgres(name: "postgres", postgresUsername, postgresPassword)
     .WithImage(image: "timescale/timescaledb-ha", tag: "pg18")
     .WithDataVolume(isReadOnly: false)
-    .WithLifetime(ContainerLifetime.Persistent);
-
-var database = postgres.AddDatabase("database");
+    .WithLifetime(ContainerLifetime.Persistent)
+    .AddDatabase("dispatch");
 
 var server = builder.AddProject<Projects.Dispatch_Server>(name: "server")
+    .WaitFor(bucket)
     .WaitFor(database)
+    .WithReference(bucket)
     .WithReference(database)
     .WithHttpEndpoint(name: "http")
     .WithHttpHealthCheck(path: "/health", statusCode: (int)HttpStatusCode.OK);
