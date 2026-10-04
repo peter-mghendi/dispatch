@@ -27,6 +27,11 @@ builder.Services.AddSingleton<IAmazonS3>(sp =>
     );
 });
 
+builder.Services.AddOutputCache(options =>
+{
+    options.AddPolicy("HealthCheckCachePolicy", cache => cache.Expire(TimeSpan.FromMinutes(5)));
+});
+
 builder.Services.AddOpenApi();
 builder.Services.AddCors(cors => cors.AddPolicy(nameof(CrossOrigin.AllowAll), CrossOrigin.AllowAll));
 builder.Services.AddHealthChecks()
@@ -43,13 +48,17 @@ await app.MaintainDatabaseAsync<DispatchDatabaseContext>();
 
 app.UseHttpsRedirection();
 app.UseCors(nameof(CrossOrigin.AllowAll));
+app.UseOutputCache();
 
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi(); 
+    app.MapOpenApi();
 }
 
 app.MapDefaultEndpoints();
-app.MapHealthChecks("/ready", new() { Predicate = check => check.Tags.Contains("ready") });
+app
+    .MapHealthChecks("/ready", new() { Predicate = check => check.Tags.Contains("ready") })
+    .CacheOutput("HealthCheckCachePolicy");
+
 app.MapEndpoints();
 app.Run();
