@@ -39,3 +39,7 @@ Accept: application/json
 < {% request.variables.set("id", "01a10631-8c25-7408-bc5f-e78292a64b47") %}
 GET {{Dispatch.Server.Host}}/handlers/{{id}}
 Accept: application/json
+
+### Delete handler
+< {% request.variables.set("id", "01a10631-8c25-7408-bc5f-e78292a64b47") %}
+DELETE {{Dispatch.Server.Host}}/handlers/{{id}}

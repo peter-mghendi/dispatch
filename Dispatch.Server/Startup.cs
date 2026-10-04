@@ -22,6 +22,7 @@ public static class Startup
             handlers.MapPost("", CreateHandler).WithName(nameof(CreateHandler));
             handlers.MapGet("", ListHandlers).WithName(nameof(ListHandlers));
             handlers.MapGet("{id:guid}", GetHandler).WithName(nameof(GetHandler));
+            handlers.MapDelete("{id:guid}", DeleteHandler).WithName(nameof(DeleteHandler));
 
             return app;
         }

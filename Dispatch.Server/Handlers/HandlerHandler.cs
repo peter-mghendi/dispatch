@@ -113,6 +113,17 @@ public sealed partial class HandlerHandler
         return Ok(handler.ToData());
     }
 
+    public static async Task<NoContent> DeleteHandler(
+        [FromServices] DispatchDatabaseContext context,
+        [FromRoute] Guid id
+    )
+    {
+        await context.Handlers.Where(handler => handler.Id == id && handler.DeletedAt == null)
+            .ExecuteUpdateAsync(setter => setter.SetProperty(handler => handler.DeletedAt, DateTimeOffset.UtcNow));
+
+        return NoContent();
+    }
+
     private static ValidationProblem Error(string key, string value) =>
         ValidationProblem(new Dictionary<string, string[]> { [key] = [value] });
 }

@@ -5,6 +5,7 @@ using CmdScale.EntityFrameworkCore.TimescaleDB;
 using Dispatch.Server;
 using Dispatch.Server.Data;
 using Dispatch.Server.Infrastructure;
+using Dispatch.Server.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -37,6 +38,8 @@ builder.Services.AddCors(cors => cors.AddPolicy(nameof(CrossOrigin.AllowAll), Cr
 builder.Services.AddHealthChecks()
     .AddCheck<DatabaseHealthCheck>("database", tags: ["ready"])
     .AddCheck<RustFsHealthCheck>("rustfs", tags: ["ready"]);
+
+builder.Services.AddHostedService<HandlerCleanupService>();
 
 if (int.TryParse(Environment.GetEnvironmentVariable("PORT"), out var port))
 {
