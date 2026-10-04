@@ -24,4 +24,8 @@
       <ProjectReference Include="..\Dispatch.Kit\Dispatch.Kit.csproj" />
       <ProjectReference Include="..\Dispatch.ServiceDefaults\Dispatch.ServiceDefaults.csproj" />
     </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="Artifacts\" />
+    </ItemGroup>
 </Project>

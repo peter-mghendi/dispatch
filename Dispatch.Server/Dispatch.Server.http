@@ -1,6 +1,41 @@
-@Dispatch.Server_HostAddress = http://localhost:5093
+### Full health check
+GET {{Dispatch.Server.Host}}/health
+Accept: text/plain
 
-GET {{Dispatch.Server_HostAddress}}/weatherforecast/
+### Server-only liveness check
+GET {{Dispatch.Server.Host}}/alive
+Accept: text/plain
+
+### Front-end service status check
+GET {{Dispatch.Server.Host}}/ready
+Accept: text/plain
+
+### Create handler
+POST {{Dispatch.Server.Host}}/handlers
+Content-Type: multipart/form-data; boundary=boundary
+
+--boundary
+Content-Disposition: form-data; name="file"; filename="echo.wasm"
+
+< ./Artifacts/echo.wasm
+--boundary
+Content-Disposition: form-data; name="title"
+
+Echo
+--boundary
+Content-Disposition: form-data; name="description"
+
+A handler that echoes the request headers and body sent to it.
+--boundary
+Content-Disposition: form-data; name="slug"
+
+--boundary-- 
+
+### Get handlers
+GET {{Dispatch.Server.Host}}/handlers
+Accept: application/json 
+
+### Get handler
+< {% request.variables.set("id", "01a10631-8c25-7408-bc5f-e78292a64b47") %}
+GET {{Dispatch.Server.Host}}/handlers/{{id}}
 Accept: application/json
-
-###

@@ -2,9 +2,9 @@ using System.Data.Common;
 using Amazon.Runtime;
 using Amazon.S3;
 using CmdScale.EntityFrameworkCore.TimescaleDB;
+using Dispatch.Server;
 using Dispatch.Server.Data;
 using Dispatch.Server.Infrastructure;
-using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -39,19 +39,17 @@ if (int.TryParse(Environment.GetEnvironmentVariable("PORT"), out var port))
 }
 
 var app = builder.Build();
-
-using var scope = app.Services.CreateScope();
-await using var context = scope.ServiceProvider.GetRequiredService<DispatchDatabaseContext>();
-await context.Database.MigrateAsync();
-
-app.MapDefaultEndpoints();
-app.MapHealthChecks("/ready", new() { Predicate = check => check.Tags.Contains("ready") });
-
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
-}
+await app.MaintainDatabaseAsync<DispatchDatabaseContext>();
 
 app.UseHttpsRedirection();
 app.UseCors(nameof(CrossOrigin.AllowAll));
+
+if (app.Environment.IsDevelopment())
+{
+    app.MapOpenApi(); 
+}
+
+app.MapDefaultEndpoints();
+app.MapHealthChecks("/ready", new() { Predicate = check => check.Tags.Contains("ready") });
+app.MapEndpoints();
 app.Run();

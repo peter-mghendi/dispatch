@@ -1,3 +1,5 @@
+using Dispatch.Kit.Models;
+
 namespace Dispatch.Server.Models;
 
 public class Handler
@@ -19,4 +21,6 @@ public class Handler
     public DateTimeOffset? DeletedAt { get; set; }
 
     public bool IsActive => DeletedAt is null;
+
+    public HandlerData ToData() => new(Id, Slug, Title, Description, CreatedAt, DeletedAt);
 }   
