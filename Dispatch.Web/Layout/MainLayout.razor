@@ -1,4 +1,3 @@
-@using System.Net
 @using Dispatch.Kit
 @using Dispatch.Web.Components
 @inherits LayoutComponentBase
@@ -33,7 +32,7 @@
 
     private readonly CancellationTokenSource _cts = new();
     private static readonly MudTheme Theme = BuildTheme();
-    private static readonly TimeSpan HeartbeatInterval = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan HeartbeatInterval = TimeSpan.FromMinutes(5);
 
     private string ToggleDarkModeButtonIcon => _dark switch
     {

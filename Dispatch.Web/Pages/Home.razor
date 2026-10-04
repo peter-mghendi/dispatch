@@ -1,10 +1,35 @@
 @page "/"
 
-<PageTitle>Home</PageTitle>
+@using Dispatch.Kit
+@using Dispatch.Kit.Models
+@using Dispatch.Web.Components
 
-<MudStack Row Justify="Justify.Center">
-    <MudStack Justify="Justify.Center">
-        <MudText Typo="Typo.h3" GutterBottom="true" Align="Align.Center">Hello!</MudText>
-        <MudText Class="mb-8">Welcome to dispatch</MudText>
-    </MudStack>
+@inject Client Dispatch
+
+<PageTitle>Home | dispatch</PageTitle>
+
+<MudStack Row AlignItems="AlignItems.Center" Class="mb-4">
+    <MudText Typo="Typo.h5">Handlers</MudText>
+    <MudSpacer/>
+    <MudButton Color="Color.Primary" StartIcon="@Icons.Material.TwoTone.Add" Href="handlers/new">Create Handler</MudButton>
 </MudStack>
+
+<MudStack Spacing="3">
+    @foreach (var handler in Handlers)
+    {
+        <HandlerCard Handler="handler" />
+    }
+</MudStack>
+
+@code
+{
+    private List<HandlerData> Handlers { get; } = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+
+        Handlers.Clear();
+        Handlers.AddRange(await Dispatch.Handlers.ListAsync());
+    }
+}

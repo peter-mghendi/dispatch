@@ -1,6 +1,144 @@
-@page "/New"
-<h3>New</h3>
+@page "/handlers/new"
+
+@using System.Text.RegularExpressions
+@using Dispatch.Kit
+
+@inject Client Dispatch
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>New Handler | dispatch</PageTitle>
+
+<MudStack Row AlignItems="AlignItems.Center" Class="mb-4">
+    <MudIconButton Icon="@Icons.Material.TwoTone.ArrowBack" Href="." Size="MudBlazor.Size.Small"/>
+    <MudText Typo="Typo.h5">New handler</MudText>
+</MudStack>
+
+<MudPaper Outlined Elevation="0" Class="rounded-lg pa-4">
+    <MudStack Spacing="3">
+        <MudTextField @bind-Value="title" Label="Title" Required
+                      Variant="Variant.Outlined" Margin="Margin.Dense" Disabled="@submitting"
+                      Error="@(titleError is not null)" ErrorText="@titleError"/>
+
+        <MudTextField @bind-Value="slug" Label="Slug" Placeholder="Random if left empty"
+                      Variant="Variant.Outlined" Margin="Margin.Dense" Disabled="@submitting"
+                      HelperText="a-z, 0-9 and '-', up to 63 characters"
+                      Error="@(slugError is not null)" ErrorText="@slugError"/>
+
+        <MudTextField @bind-Value="description" Label="Description" Lines="3"
+                      Variant="Variant.Outlined" Margin="Margin.Dense" Disabled="@submitting"/>
+
+        <MudStack Spacing="1">
+            <MudStack Row AlignItems="AlignItems.Center">
+                <MudFileUpload T="IBrowserFile" Accept=".wasm" FilesChanged="@OnFileChanged" Disabled="@submitting">
+                    <CustomContent Context="fileUpload">
+                        <MudButton Variant="Variant.Outlined" Disabled="@submitting"
+                                   StartIcon="@Icons.Material.TwoTone.UploadFile"
+                                   OnClick="@fileUpload.OpenFilePickerAsync">
+                            Choose module
+                        </MudButton>
+                    </CustomContent>
+                </MudFileUpload>
+            </MudStack>
+            @if (fileError is not null)
+            {
+                <MudText Typo="Typo.caption" Color="Color.Error">@fileError</MudText>
+            }
+            else
+            {
+                <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                    WebAssembly (.wasm), up to @(MaxWasmBytes / 1024 / 1024) MB
+                </MudText>
+            }
+        </MudStack>
+
+        <MudStack Row AlignItems="AlignItems.Center" Justify="Justify.FlexEnd">
+            @if (submitting)
+            {
+                <MudProgressCircular Size="MudBlazor.Size.Small" Indeterminate/>
+            }
+            <MudButton Href="." Disabled="@submitting">Cancel</MudButton>
+            <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="@submitting"
+                       StartIcon="@Icons.Material.TwoTone.Add" OnClick="@Submit">
+                Create
+            </MudButton>
+        </MudStack>
+    </MudStack>
+</MudPaper>
 
 @code {
-    
+    private const int MaxWasmBytes = 5 * 1024 * 1024;
+
+    private static readonly Regex SlugPattern = new("^[a-z0-9][a-z0-9-]{0,62}$");
+
+    private string title = "";
+    private string slug = "";
+    private string description = "";
+    private IBrowserFile? file;
+
+    private string? titleError;
+    private string? slugError;
+    private string? fileError;
+
+    private bool submitting;
+
+    private void OnFileChanged(IBrowserFile? selected)
+    {
+        file = selected;
+        fileError = null;
+    }
+
+    private bool Validate()
+    {
+        titleError = string.IsNullOrWhiteSpace(title) ? "Title is required." : null;
+
+        slugError = !string.IsNullOrWhiteSpace(slug) && !SlugPattern.IsMatch(slug.Trim())
+            ? "Use a-z, 0-9 and '-'; must not start with '-'."
+            : null;
+
+        fileError = file switch
+        {
+            null => "Choose a module to upload.",
+            _ when !file.Name.EndsWith(".wasm", StringComparison.OrdinalIgnoreCase) => "Only .wasm files are allowed.",
+            { Size: 0 or > MaxWasmBytes } => $"Module must be 1 byte to {MaxWasmBytes / 1024 / 1024} MB.",
+            _ => null
+        };
+
+        return titleError is null && slugError is null && fileError is null;
+    }
+
+    private async Task Submit()
+    {
+        if (!Validate()) return;
+
+        submitting = true;
+        try
+        {
+            await using var stream = file!.OpenReadStream(MaxWasmBytes);
+            var id = await Dispatch.Handlers.CreateAsync(
+                string.IsNullOrWhiteSpace(slug) ? null : slug.Trim(),
+                title.Trim(),
+                description,
+                stream,
+                file.Name
+            );
+
+            Navigation.NavigateTo($"handlers/{id}");
+        }
+        catch (Exception e)
+        {
+            Snackbar.Add(e.StackTrace, Severity.Error, snackbar => snackbar.SnackbarVariant = Variant.Text);
+        }
+        finally
+        {
+            submitting = false;
+        }
+    }
+
+    private static string Size(long bytes) => bytes switch
+    {
+        >= 1024 * 1024 => $"{bytes / 1024.0 / 1024.0:0.#} MB",
+        >= 1024 => $"{bytes / 1024.0:0.#} KB",
+        _ => $"{bytes} B"
+    };
 }

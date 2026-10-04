@@ -1,6 +1,278 @@
-@page "/Show"
-<h3>Show</h3>
+@page "/handlers/{id:guid}"
 
-@code {
-    
+@using System.Diagnostics
+@using Dispatch.Kit
+@using Dispatch.Kit.Models
+
+@inject Client Dispatch
+@inject IJSRuntime Javascript
+@inject ISnackbar Snackbar
+@inject IDialogService Dialogs
+
+<PageTitle>@(Handler?.Title ?? "Handler") | dispatch</PageTitle>
+
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate Color="Color.Primary" Class="mt-12"/>
+}
+else if (Handler is null)
+{
+    <MudAlert Severity="Severity.Warning" Variant="Variant.Text">Handler not found.</MudAlert>
+}
+else
+{
+    <MudStack Row AlignItems="AlignItems.Center" Class="mb-4">
+        <MudIconButton Icon="@Icons.Material.TwoTone.ArrowBack" Href="." Size="Size.Small"/>
+        <MudText Typo="Typo.h5">@Handler.Title</MudText>
+        @if (Dead)
+        {
+            <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Text"
+                     Icon="@Icons.Material.TwoTone.Schedule">
+                Pending deletion
+            </MudChip>
+        }
+        <MudSpacer/>
+        <MudButton Color="Color.Error" StartIcon="@Icons.Material.TwoTone.Delete"
+                   Disabled="@Dead" OnClick="@Delete">
+            Delete
+        </MudButton>
+    </MudStack>
+
+    <MudStack Spacing="3">
+        <MudPaper Outlined Elevation="0" Class="rounded-lg pa-4">
+            <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                @(string.IsNullOrWhiteSpace(Handler.Description) ? "No description" : Handler.Description)
+            </MudText>
+
+            <MudSimpleTable Elevation="0" Class="mt-2">
+                <tbody>
+                <tr>
+                    <td class="mud-text-secondary">Slug</td>
+                    <td>
+                        <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
+                            <MudText Typo="Typo.body2">@Handler.Slug</MudText>
+                            <MudTooltip Text="Copy">
+                                <MudIconButton Icon="@Icons.Material.TwoTone.ContentCopy" Size="Size.Small"
+                                               OnClick="@CopySlug"/>
+                            </MudTooltip>
+                        </MudStack>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="mud-text-secondary">Id</td>
+                    <td>@Handler.Id</td>
+                </tr>
+                <tr>
+                    <td class="mud-text-secondary">Created</td>
+                    <td>@Handler.CreatedAt.ToLocalTime().ToString("f")</td>
+                </tr>
+                @if (Dead)
+                {
+                    <tr>
+                        <td class="mud-text-secondary">Deleted</td>
+                        <td>@Handler.DeletedAt!.Value.ToLocalTime().ToString("f")</td>
+                    </tr>
+                }
+                </tbody>
+            </MudSimpleTable>
+        </MudPaper>
+
+        <MudPaper Outlined Elevation="0" Class="@($"rounded-lg pa-4 {(Dead ? "mud-text-disabled" : "")}")">
+            <MudText Typo="Typo.h6" Class="mb-3">Test</MudText>
+
+            @if (Dead)
+            {
+                <MudAlert Severity="Severity.Warning" Variant="Variant.Text" Class="mb-4">
+                    This handler is pending deletion and can no longer be executed.
+                </MudAlert>
+            }
+
+            <MudStack Spacing="3">
+                <MudGrid Spacing="2">
+                    <MudItem xs="12" sm="3">
+                        <MudSelect T="string" @bind-Value="_method" Label="Method"
+                                   Variant="Variant.Outlined" Margin="Margin.Dense" Disabled="@Dead">
+                            @foreach (var option in Methods)
+                            {
+                                <MudSelectItem Value="@option">@option</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" sm="9">
+                        <MudTextField @bind-Value="_path" Label="Path" Placeholder="/hello?name=world"
+                                      Variant="Variant.Outlined" Margin="Margin.Dense"
+                                      HelperText="Relative to the handler" Disabled="@Dead"/>
+                    </MudItem>
+                </MudGrid>
+
+                <MudStack Spacing="1">
+                    <MudText Typo="Typo.subtitle2">Headers</MudText>
+                    @foreach (var header in _headers)
+                    {
+                        <MudStack Row AlignItems="AlignItems.Center">
+                            <MudTextField @bind-Value="header.Name" Label="Name"
+                                          Variant="Variant.Outlined" Margin="Margin.Dense" Disabled="@Dead"/>
+                            <MudTextField @bind-Value="header.Value" Label="Value"
+                                          Variant="Variant.Outlined" Margin="Margin.Dense" Disabled="@Dead"/>
+                            <MudIconButton Icon="@Icons.Material.TwoTone.Close" Size="Size.Small"
+                                           OnClick="@(() => _headers.Remove(header))" Disabled="@Dead"/>
+                        </MudStack>
+                    }
+                    <div>
+                        <MudButton Color="Color.Primary" Size="Size.Small"
+                                   StartIcon="@Icons.Material.TwoTone.Add"
+                                   OnClick="@(() => _headers.Add(new Header()))" Disabled="@Dead">
+                            Add header
+                        </MudButton>
+                    </div>
+                </MudStack>
+
+                <MudTextField @bind-Value="_body" Label="Body" Lines="8"
+                              Variant="Variant.Outlined" Margin="Margin.Dense"
+                              Disabled="@(Dead || _method is "GET" or "HEAD")"/>
+
+                <MudStack Row AlignItems="AlignItems.Center">
+                    <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="@(Dead || _sending)"
+                               StartIcon="@Icons.Material.TwoTone.PlayArrow" OnClick="@Send">
+                        Send
+                    </MudButton>
+                    @if (_sending)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate/>
+                    }
+                </MudStack>
+            </MudStack>
+
+            @if (_result is not null)
+            {
+                <MudDivider Class="my-4"/>
+
+                <MudStack Row AlignItems="AlignItems.Center" Class="mb-2">
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="@StatusColor(_result.Status)">
+                        @_result.Status
+                    </MudChip>
+                    <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                        @_result.Elapsed.TotalMilliseconds.ToString("0") ms
+                    </MudText>
+                </MudStack>
+
+                <MudTextField T="string" Value="@_result.Body" Label="Response body" ReadOnly Lines="10"
+                              Variant="Variant.Outlined" Margin="Margin.Dense"/>
+
+                @if (_result.Headers.Any())
+                {
+                    <MudSimpleTable Dense Elevation="0" Class="mt-2">
+                        <tbody>
+                        @foreach (var header in _result.Headers)
+                        {
+                            <tr>
+                                <td class="mud-text-secondary">@header.Name</td>
+                                <td>@header.Value</td>
+                            </tr>
+                        }
+                        </tbody>
+                    </MudSimpleTable>
+                }
+            }
+        </MudPaper>
+    </MudStack>
+}
+
+@code
+{
+    private static readonly string[] Methods = ["GET", "POST", "PUT", "PATCH", "DELETE"];
+
+    [Parameter] public Guid Id { get; set; }
+
+    private HandlerData? Handler { get; set; }
+    private bool Dead => Handler?.DeletedAt is not null;
+
+    private bool _loading = true;
+    private bool _sending;
+
+    private string _method = "POST";
+    private string _path = "/";
+    private string _body = "";
+    private readonly List<Header> _headers = [new() { Name = "Content-Type", Value = "application/json" }];
+    private TestResult? _result;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _loading = true;
+        _result = null;
+
+        try
+        {
+            Handler = await Dispatch.Handlers.GetAsync(Id);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task Send()
+    {
+        _sending = true;
+        _result = null;
+
+        var timer = Stopwatch.StartNew();
+        try
+        {
+            await Task.Delay(TimeSpan.FromSeconds(3));
+            _result = new TestResult(200, _headers, _body, timer.Elapsed);
+        }
+        catch (Exception e)
+        {
+            Snackbar.Add(e.Message, Severity.Error, snackbar => snackbar.SnackbarVariant = Variant.Text);
+        }
+        finally
+        {
+            _sending = false;
+        }
+    }
+
+    private async Task Delete()
+    {
+        var confirmed = await Dialogs.ShowMessageBoxAsync(
+            "Delete handler",
+            $"Delete “{Handler!.Title}”? It can no longer be executed and will be purged later.",
+            yesText: "Delete",
+            cancelText: "Cancel"
+        );
+
+        if (confirmed is not true) return;
+
+        try
+        {
+            await Dispatch.Handlers.DeleteAsync(Id);
+            Handler = await Dispatch.Handlers.GetAsync(Id);
+        }
+        catch (Exception e)
+        {
+            Snackbar.Add(e.Message, Severity.Error, snackbar => snackbar.SnackbarVariant = Variant.Text);
+        }
+    }
+
+    private async Task CopySlug()
+    {
+        await Javascript.InvokeVoidAsync("navigator.clipboard.writeText", Handler!.Slug);
+        Snackbar.Add("Copied!", Severity.Success, snackbar => snackbar.SnackbarVariant = Variant.Text);
+    }
+
+    private static Color StatusColor(int status) => status switch
+    {
+        >= 500 => Color.Error,
+        >= 400 => Color.Warning,
+        >= 300 => Color.Info,
+        _ => Color.Success
+    };
+
+    private sealed class Header
+    {
+        public string Name { get; set; } = "";
+        public string Value { get; set; } = "";
+    }
+
+    private sealed record TestResult(int Status, List<Header> Headers, string Body, TimeSpan Elapsed);
 }
