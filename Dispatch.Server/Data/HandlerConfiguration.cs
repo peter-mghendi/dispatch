@@ -12,6 +12,7 @@ public sealed class HandlerConfiguration : IEntityTypeConfiguration<Handler>
 
     public void Configure(EntityTypeBuilder<Handler> builder)
     {
+        builder.HasIndex(handler => handler.Slug).IsUnique();
         builder.Ignore(handler => handler.IsActive);
     }
 }

@@ -55,6 +55,9 @@ namespace Dispatch.Server.Data.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Slug")
+                        .IsUnique();
+
                     b.ToTable("Handlers");
                 });
 #pragma warning restore 612, 618
