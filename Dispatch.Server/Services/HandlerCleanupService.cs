@@ -1,4 +1,5 @@
 using Dispatch.Server.Data;
+using Dispatch.Server.Models;
 using Microsoft.EntityFrameworkCore;
 using PurgeResult = (int Rows, bool Referenced);
 
@@ -33,7 +34,7 @@ public class HandlerCleanupService(
         {
             await using var scope = scopes.CreateAsyncScope();
             var context = scope.ServiceProvider.GetRequiredService<DispatchDatabaseContext>();
-            var s3 = scope.ServiceProvider.GetRequiredService<IAmazonS3>();
+            var storage = scope.ServiceProvider.GetRequiredService<HandlerStorage>();
 
             var cutoff = DateTimeOffset.UtcNow - Retention;
             var hashes = await context.Handlers.AsNoTracking()
@@ -47,7 +48,7 @@ public class HandlerCleanupService(
             {
                 try
                 {
-                    var (removed, referenced) = await PurgeAsync(context, s3, hash, cutoff, ct);
+                    var (removed, referenced) = await PurgeAsync(context, storage, hash, cutoff, ct);
                     var action = referenced switch
                     {
                         true => "object kept (still referenced)",
@@ -70,7 +71,7 @@ public class HandlerCleanupService(
 
     private static async Task<PurgeResult> PurgeAsync(
         DispatchDatabaseContext context,
-        IAmazonS3 s3,
+        HandlerStorage storage,
         string hash,        
         DateTimeOffset cutoff,
         CancellationToken ct
@@ -86,7 +87,7 @@ public class HandlerCleanupService(
             .ExecuteDeleteAsync(ct);
 
         var referenced = await context.Handlers.AnyAsync(h => h.ContentHash == hash, ct);
-        if (!referenced) await s3.DeleteObjectAsync("dispatch", $"handlers/{hash}.wasm", ct);
+        if (!referenced) await storage.DeleteAsync(hash, ct);
 
         await transaction.CommitAsync(ct);
         return (Rows: removed, Referenced: referenced);

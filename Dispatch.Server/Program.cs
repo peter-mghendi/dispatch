@@ -40,6 +40,7 @@ builder.Services.AddHealthChecks()
     .AddCheck<RustFsHealthCheck>("rustfs", tags: ["ready"]);
 
 builder.Services.AddHostedService<HandlerCleanupService>();
+builder.Services.AddSingleton<HandlerStorage>();
 
 if (int.TryParse(Environment.GetEnvironmentVariable("PORT"), out var port))
 {

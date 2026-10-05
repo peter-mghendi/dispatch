@@ -6,6 +6,7 @@ using Dispatch.Kit.Models;
 using Dispatch.Server.Data;
 using Dispatch.Server.Models;
 using Dispatch.Server.Models.Request;
+using Dispatch.Server.Services;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -41,9 +42,9 @@ public sealed partial class HandlerHandler
 
     public static async Task<Results<CreatedAtRoute, Conflict, ValidationProblem>> CreateHandler(
         [FromServices] DispatchDatabaseContext context,
-        [FromServices] IAmazonS3 s3,
+        [FromServices] HandlerStorage storage,
         [FromForm] HandlerRequest request,
-        CancellationToken ct
+        CancellationToken cancellation
     )
     {
         var slug = request.Slug?.Trim() switch
@@ -62,7 +63,7 @@ public sealed partial class HandlerHandler
             return Error("file", $"Module must be 1 byte to {MaxWasmBytes / 1024 / 1024} MB.");
 
         var bytes = new byte[request.File.Length];
-        await using (var stream = request.File.OpenReadStream()) await stream.ReadExactlyAsync(bytes, ct);
+        await using (var stream = request.File.OpenReadStream()) await stream.ReadExactlyAsync(bytes, cancellation);
 
         if (bytes.Length < 8 || !bytes.AsSpan(0, 4).SequenceEqual("\0asm"u8))
             return ValidationProblem(new Dictionary<string, string[]> { ["file"] = ["Not a WebAssembly binary."] });
@@ -82,17 +83,10 @@ public sealed partial class HandlerHandler
                 CreatedAt = DateTimeOffset.UtcNow,
             };
             context.Handlers.Add(handler);
-            await context.SaveChangesAsync(ct);
+            await context.SaveChangesAsync(cancellation);
 
             using var body = new MemoryStream(bytes, writable: false);
-            var upload = new PutObjectRequest
-            {
-                BucketName = "dispatch",
-                Key = $"handlers/{hash}.wasm",
-                InputStream = body,
-                ContentType = "application/wasm",
-            };
-            await s3.PutObjectAsync(upload, ct);
+            await storage.UploadAsync(hash, body, cancellation);
 
             return CreatedAtRoute(nameof(GetHandler), new RouteValueDictionary { ["id"] = handler.Id });
         }
