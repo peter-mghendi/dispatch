@@ -25,5 +25,12 @@
     <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.15.1" />
     <PackageVersion Include="MudBlazor" Version="9.11.0" />
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
+    <PackageVersion Include="WACS" Version="0.16.14" />
+    <PackageVersion Include="WACS.ComponentModel" Version="0.10.3" />
+    <PackageVersion Include="WACS.ComponentModel.Harness.Runtime" Version="0.7.5" />
+    <PackageVersion Include="WACS.Transpiler.Lib" Version="0.12.12" />
+    <PackageVersion Include="WACS.WASI.Preview1" Version="0.13.1" />
+    <PackageVersion Include="WACS.WASI.Preview2" Version="0.5.0" />
+    <PackageVersion Include="WACS.WASI.Preview2.DependencyInjection" Version="0.3.0" />
   </ItemGroup>
 </Project>

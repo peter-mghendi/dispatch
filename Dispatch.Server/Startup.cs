@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using static Dispatch.Server.Handlers.EndpointHandler;
 using static Dispatch.Server.Handlers.HandlerHandler;
+using static Microsoft.AspNetCore.Http.HttpMethods;
 
 namespace Dispatch.Server;
 
@@ -23,6 +25,9 @@ public static class Startup
             handlers.MapGet("", ListHandlers).WithName(nameof(ListHandlers));
             handlers.MapGet("{id:guid}", GetHandler).WithName(nameof(GetHandler));
             handlers.MapDelete("{id:guid}", DeleteHandler).WithName(nameof(DeleteHandler));
+
+            routes.MapMethods("/endpoints/{slug}/{path?}", [Delete, Get, Patch, Post, Put, Query], InvokeEndpoint)
+                .WithName(nameof(InvokeEndpoint));
 
             return app;
         }

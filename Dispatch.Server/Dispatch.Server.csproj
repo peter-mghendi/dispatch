@@ -18,6 +18,10 @@
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
         <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+        <PackageReference Include="WACS.ComponentModel" />
+        <PackageReference Include="WACS.ComponentModel.Harness.Runtime" />
+        <PackageReference Include="WACS.WASI.Preview1" />
+        <PackageReference Include="WACS.WASI.Preview2" />
     </ItemGroup>
 
     <ItemGroup>
@@ -26,6 +30,6 @@
     </ItemGroup>
 
     <ItemGroup>
-      <Folder Include="Artifacts\" />
+        <None Include="..\Dispatch.Guest\Dispatch.Guest.dll" Link="Dispatch.Guest.dll" CopyToOutputDirectory="PreserveNewest" />
     </ItemGroup>
 </Project>

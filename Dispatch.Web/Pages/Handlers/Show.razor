@@ -121,7 +121,8 @@ else
                     <div>
                         <MudButton Color="Color.Primary" Size="Size.Small"
                                    StartIcon="@Icons.Material.TwoTone.Add"
-                                   OnClick="@(() => _headers.Add(new Header()))" Disabled="@Dead">
+                                   OnClick="@(() => _headers.Add(new HeaderData(string.Empty, string.Empty)))"
+                                   Disabled="@Dead">
                             Add header
                         </MudButton>
                     </div>
@@ -193,7 +194,7 @@ else
     private string _method = "POST";
     private string _path = "/";
     private string _body = "";
-    private readonly List<Header> _headers = [new() { Name = "Content-Type", Value = "application/json" }];
+    private readonly List<HeaderData> _headers = [new("Content-Type", "application/json")];
     private TestResult? _result;
 
     protected override async Task OnParametersSetAsync()
@@ -213,14 +214,18 @@ else
 
     private async Task Send()
     {
+        if(Handler is null) return;
+
         _sending = true;
         _result = null;
 
         var timer = Stopwatch.StartNew();
         try
         {
-            await Task.Delay(TimeSpan.FromSeconds(3));
-            _result = new TestResult(200, _headers, _body, timer.Elapsed);
+            var request = new EndpointRequest { Method = _method, Path = _path, Headers = _headers, Body = _body };
+            var response = await Dispatch.Endpoints.InvokeAsync(Handler!.Slug, request);
+
+            _result = new TestResult(response.StatusCode, response.Headers, response.Body, timer.Elapsed);
         }
         catch (Exception e)
         {
@@ -268,11 +273,5 @@ else
         _ => Color.Success
     };
 
-    private sealed class Header
-    {
-        public string Name { get; set; } = "";
-        public string Value { get; set; } = "";
-    }
-
-    private sealed record TestResult(int Status, List<Header> Headers, string Body, TimeSpan Elapsed);
+    private sealed record TestResult(int Status, List<HeaderData> Headers, string Body, TimeSpan Elapsed);
 }

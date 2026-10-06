@@ -87,10 +87,54 @@
           "Npgsql": "10.0.3"
         }
       },
+      "WACS.ComponentModel": {
+        "type": "Direct",
+        "requested": "[0.10.3, )",
+        "resolved": "0.10.3",
+        "contentHash": "AYtsSDvfn1wxYcsBx1hZbcRbDdukRp8qV2zFMo8mZfjuwcDeCqbSKjiU+cdGwVAk/yNGC1O1K405AMdHBTI6Xg==",
+        "dependencies": {
+          "WACS": "0.16.14",
+          "WACS.ComponentModel.Parser": "0.2.1"
+        }
+      },
+      "WACS.ComponentModel.Harness.Runtime": {
+        "type": "Direct",
+        "requested": "[0.7.5, )",
+        "resolved": "0.7.5",
+        "contentHash": "DixrLEWKnzd3YiDnx363YK1+6CaL3PrBNgMfwEInrqgpnl9ZaLG37sS1w+cQpW/Ve9f6FVfoPiXzvh6u7b9d2g==",
+        "dependencies": {
+          "WACS": "0.16.14",
+          "WACS.ComponentModel.Parser": "0.2.2"
+        }
+      },
+      "WACS.WASI.Preview1": {
+        "type": "Direct",
+        "requested": "[0.13.1, )",
+        "resolved": "0.13.1",
+        "contentHash": "8ga3w6t6oCrJcCSzIXyHDcarHaQ34uvD3l451lGCQdXTKS9NxB1hp3V0y13wFA88Y9G80gHK/9IjbJMr4vP3Jg==",
+        "dependencies": {
+          "WACS": "0.16.14",
+          "WACS.HostBindings.Abstractions": "0.3.0"
+        }
+      },
+      "WACS.WASI.Preview2": {
+        "type": "Direct",
+        "requested": "[0.5.0, )",
+        "resolved": "0.5.0",
+        "contentHash": "E/aPt7o17uc89jh1IPHKW75XiOb3WaOVp4ZK2L+vjO750V9v0AjYXRNABszicLvYCZkUwaUM6g3b3inWQsenaw==",
+        "dependencies": {
+          "WACS.ComponentModel": "0.4.0"
+        }
+      },
       "AWSSDK.Core": {
         "type": "Transitive",
         "resolved": "4.0.102.8",
         "contentHash": "90B9Skhl+ORbtWNXrrmGdGhGvAfZiPmZafRYrB/xHelZjePIwPvXioqz9UiiF1vo21eDLzTnXh5EC4RjbNWsFQ=="
+      },
+      "FluentValidation": {
+        "type": "Transitive",
+        "resolved": "11.10.0",
+        "contentHash": "qsJGSJDdZ8qiG+lVJ70PZfJHcEdq8UQZ/tZDXoj78/iHKG6lVKtMJsD11zyyv/IPc7rwqGqnFoFLTNzpo3IPYg=="
       },
       "Humanizer.Core": {
         "type": "Transitive",
@@ -420,6 +464,16 @@
           "System.Composition.Runtime": "9.0.0"
         }
       },
+      "WACS.ComponentModel.Parser": {
+        "type": "Transitive",
+        "resolved": "0.2.2",
+        "contentHash": "T0rgGJCFk9iGfXstn+UblE+PgVASDKKc6DLKl6QXXmTNgXLshbrZmDJDkzE2zfmlkbTz6RL/2/bvI32K2s8fgw=="
+      },
+      "WACS.HostBindings.Abstractions": {
+        "type": "Transitive",
+        "resolved": "0.3.0",
+        "contentHash": "0IMav+dDrgoqY6LdXcOyc6CP45aYeMWRKIxZa8kvFLJrnzAGXDCAaFMSaLtvnjJIlQGK/Fg6WvPUWjAydeq2pw=="
+      },
       "dispatch.kit": {
         "type": "Project"
       },
@@ -497,6 +551,15 @@
         "contentHash": "cpPwlUT5HXcLGPaIgsbSy0W9eFYAPGVbTP1p8/uyQ4Osvf5BJuPpEXE7crL09SmEd44r0DGNKDtsqxaAz0HxQw==",
         "dependencies": {
           "OpenTelemetry.Api": "[1.15.3, 2.0.0)"
+        }
+      },
+      "WACS": {
+        "type": "CentralTransitive",
+        "requested": "[0.16.14, )",
+        "resolved": "0.16.14",
+        "contentHash": "9/DP/W+QsDNUcO6PP2yvqeeBgh6Gohwi3s0VU13ADW0a2fApXhyVeLm1mjuPptgKvM02px5WJTgenmrNdRn+aw==",
+        "dependencies": {
+          "FluentValidation": "11.10.0"
         }
       }
     },

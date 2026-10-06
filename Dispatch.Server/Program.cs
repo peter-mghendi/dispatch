@@ -39,8 +39,10 @@ builder.Services.AddHealthChecks()
     .AddCheck<DatabaseHealthCheck>("database", tags: ["ready"])
     .AddCheck<RustFsHealthCheck>("rustfs", tags: ["ready"]);
 
+builder.Services.AddHttpContextAccessor();
 builder.Services.AddHostedService<HandlerCleanupService>();
 builder.Services.AddSingleton<HandlerStorage>();
+builder.Services.AddSingleton<HandlerRunner>();
 
 if (int.TryParse(Environment.GetEnvironmentVariable("PORT"), out var port))
 {
