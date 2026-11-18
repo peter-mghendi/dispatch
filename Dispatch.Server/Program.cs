@@ -40,6 +40,7 @@ builder.Services.AddHealthChecks()
     .AddCheck<RustFsHealthCheck>("rustfs", tags: ["ready"]);
 
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddMemoryCache(options => options.SizeLimit = 256 * 1024 * 1024);
 builder.Services.AddHostedService<HandlerCleanupService>();
 builder.Services.AddSingleton<HandlerStorage>();
 builder.Services.AddSingleton<HandlerRunner>();

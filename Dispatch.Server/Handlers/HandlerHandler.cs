@@ -1,7 +1,5 @@
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
-using Amazon.S3;
-using Amazon.S3.Model;
 using Dispatch.Kit.Models;
 using Dispatch.Server.Data;
 using Dispatch.Server.Models;
@@ -86,7 +84,7 @@ public sealed partial class HandlerHandler
             await context.SaveChangesAsync(cancellation);
 
             using var body = new MemoryStream(bytes, writable: false);
-            await storage.UploadAsync(hash, body, cancellation);
+            await storage.StoreAsync(hash, body, cancellation);
 
             return CreatedAtRoute(nameof(GetHandler), new RouteValueDictionary { ["id"] = handler.Id });
         }

@@ -1,14 +1,12 @@
 using System.Diagnostics;
 using System.Text;
 using Dispatch.Server.Models;
-using Microsoft.Extensions.Caching.Memory;
 
 namespace Dispatch.Server.Services;
 
 public sealed class HandlerRunner(HandlerStorage storage, ILogger<HandlerRunner> logger)
 {
     private static readonly TimeSpan ExecutionTimeout = TimeSpan.FromSeconds(60);
-    // private static readonly TimeSpan CacheLifetime = TimeSpan.FromMinutes(10);
 
     public async Task<Response> RunAsync(Handler handler, Request request, CancellationToken cancellation)
     {
@@ -18,7 +16,9 @@ public sealed class HandlerRunner(HandlerStorage storage, ILogger<HandlerRunner>
             handler.ContentHash,
             handler.ContentSize
         );
-        var component = await LoadAsync(handler, cancellation);
+        var component = await storage.FetchAsync(handler.ContentHash, cancellation);
+        logger.LogDebug("Loaded {Bytes} bytes.", component.Length);
+
         var input = request with { Path = "/" + (request.Path ?? string.Empty).TrimStart('/') };
 
         var timer = Stopwatch.StartNew();
@@ -46,29 +46,6 @@ public sealed class HandlerRunner(HandlerStorage storage, ILogger<HandlerRunner>
             logger.LogError(e, "Handler failed");
             return Failure(500, "Handler failed.");
         }
-    }
-
-    // TODO: [Cache] Enable caching for these after verifying that modules can be streamed from object storage
-    private async Task<byte[]> LoadAsync(Handler handler, CancellationToken cancellation)
-    {
-        // var key = $"handlers:{handler.ContentHash}";
-        // if (cache.TryGetValue(key, out byte[]? cached) && cached is not null)
-        // {
-        //     logger.LogDebug("Loaded {Loaded} bytes from cache.", cached.Length);
-        //     return cached;
-        // }
-
-        logger.LogDebug("Downloading handler.");
-
-        await using var stream = await storage.DownloadAsync(handler.ContentHash, cancellation);
-        using var memory = new MemoryStream(capacity: (int)handler.ContentSize);
-        await stream.CopyToAsync(memory, cancellation);
-        var bytes = memory.ToArray();
-
-        logger.LogDebug("Downloaded {Downloaded} bytes.", bytes.Length);
-
-        // cache.Set(key, bytes, new MemoryCacheEntryOptions { SlidingExpiration = CacheLifetime });
-        return bytes;
     }
 
     private static Response Failure(int status, string message) =>
