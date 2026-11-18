@@ -22,5 +22,5 @@ public class Handler
 
     public bool IsActive => DeletedAt is null;
 
-    public HandlerData ToData() => new(Id, Slug, Title, Description, CreatedAt, DeletedAt);
-}   
+    public HandlerData ToData(string endpoint) => new(Id, Slug, endpoint, Title, Description, CreatedAt, DeletedAt);
+}

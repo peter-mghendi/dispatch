@@ -29,17 +29,33 @@
                       Variant="Variant.Outlined" Margin="Margin.Dense" Disabled="@submitting"/>
 
         <MudStack Spacing="1">
-            <MudStack Row AlignItems="AlignItems.Center">
-                <MudFileUpload T="IBrowserFile" Accept=".wasm" FilesChanged="@OnFileChanged" Disabled="@submitting">
-                    <CustomContent Context="fileUpload">
+            <MudFileUpload @ref="upload" T="IBrowserFile" Accept=".wasm" FilesChanged="@OnFileChanged" Disabled="@submitting">
+                <CustomContent Context="fileUpload">
+                    <div class="d-flex">
                         <MudButton Variant="Variant.Outlined" Disabled="@submitting"
                                    StartIcon="@Icons.Material.TwoTone.UploadFile"
                                    OnClick="@fileUpload.OpenFilePickerAsync">
-                            Choose module
+                            @(file is null ? "Choose module" : "Replace module")
                         </MudButton>
-                    </CustomContent>
-                </MudFileUpload>
-            </MudStack>
+                    </div>
+                </CustomContent>
+                <SelectedTemplate Context="selected">
+                    @if (selected is not null)
+                    {
+                        <MudPaper Outlined Elevation="0" Class="d-flex align-center gap-3 rounded-lg px-3 py-2 mt-2"
+                                  Style="@(fileError is null ? null : "border-color: var(--mud-palette-error)")">
+                            <MudIcon Icon="@Icons.Material.TwoTone.InsertDriveFile"
+                                     Color="@(fileError is null ? Color.Primary : Color.Error)"/>
+                            <div class="flex-grow-1" style="min-width: 0">
+                                <MudText Typo="Typo.body2" Class="text-truncate">@selected.Name</MudText>
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary">@Size(selected.Size)</MudText>
+                            </div>
+                            <MudIconButton Icon="@Icons.Material.TwoTone.Close" Size="MudBlazor.Size.Small"
+                                           Disabled="@submitting" aria-label="Remove module" OnClick="@ClearFile"/>
+                        </MudPaper>
+                    }
+                </SelectedTemplate>
+            </MudFileUpload>
             @if (fileError is not null)
             {
                 <MudText Typo="Typo.caption" Color="Color.Error">@fileError</MudText>
@@ -75,6 +91,7 @@
     private string slug = "";
     private string description = "";
     private IBrowserFile? file;
+    private MudFileUpload<IBrowserFile>? upload;
 
     private string? titleError;
     private string? slugError;
@@ -85,8 +102,12 @@
     private void OnFileChanged(IBrowserFile? selected)
     {
         file = selected;
-        fileError = null;
+
+        // Flag a bad pick right away; an empty selection is only an error on submit.
+        fileError = selected is null ? null : FileError(selected);
     }
+
+    private Task ClearFile() => upload?.ClearAsync() ?? Task.CompletedTask;
 
     private bool Validate()
     {
@@ -96,16 +117,18 @@
             ? "Use a-z, 0-9 and '-'; must not start with '-'."
             : null;
 
-        fileError = file switch
-        {
-            null => "Choose a module to upload.",
-            _ when !file.Name.EndsWith(".wasm", StringComparison.OrdinalIgnoreCase) => "Only .wasm files are allowed.",
-            { Size: 0 or > MaxWasmBytes } => $"Module must be 1 byte to {MaxWasmBytes / 1024 / 1024} MB.",
-            _ => null
-        };
+        fileError = FileError(file);
 
         return titleError is null && slugError is null && fileError is null;
     }
+
+    private static string? FileError(IBrowserFile? file) => file switch
+    {
+        null => "Choose a module to upload.",
+        _ when !file.Name.EndsWith(".wasm", StringComparison.OrdinalIgnoreCase) => "Only .wasm files are allowed.",
+        { Size: 0 or > MaxWasmBytes } => $"Module must be 1 byte to {MaxWasmBytes / 1024 / 1024} MB.",
+        _ => null
+    };
 
     private async Task Submit()
     {
@@ -127,7 +150,7 @@
         }
         catch (Exception e)
         {
-            Snackbar.Add(e.StackTrace, Severity.Error, snackbar => snackbar.SnackbarVariant = Variant.Text);
+            Snackbar.Add(e.Message,Severity.Error, snackbar => snackbar.SnackbarVariant = Variant.Text);
         }
         finally
         {

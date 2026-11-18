@@ -19,8 +19,12 @@
         <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense
                  AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
             <MudMenuItem Icon="@Icons.Material.TwoTone.ContentCopy" IconColor="Color.Info"
-                         OnClick="@(() => CopySlug(Handler))">
+                         OnClick="@(() => Copy(Handler.Slug))">
                 Copy slug
+            </MudMenuItem>
+            <MudMenuItem Icon="@Icons.Material.TwoTone.Link" IconColor="Color.Info" Disabled="@Dead"
+                         OnClick="@(() => Copy(Handler.Endpoint))">
+                Copy endpoint URL
             </MudMenuItem>
             <MudMenuItem Icon="@Icons.Material.TwoTone.Delete" IconColor="Color.Error" Disabled="@Dead">
                 Delete
@@ -35,7 +39,7 @@
     <MudStack Row AlignItems="AlignItems.Center" Class="mt-3">
         <MudTooltip Text="Click to copy">
             <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
-                     Icon="@Icons.Material.TwoTone.Tag" OnClick="@(() => CopySlug(Handler))">
+                     Icon="@Icons.Material.TwoTone.Tag" OnClick="@(() => Copy(Handler.Slug))">
                 @Handler.Slug
             </MudChip>
         </MudTooltip>
@@ -53,9 +57,9 @@
     
     private bool Dead => Handler.DeletedAt is not null;
 
-    private async Task CopySlug(HandlerData handler)
+    private async Task Copy(string text)
     {
-        await Javascript.InvokeVoidAsync("navigator.clipboard.writeText", handler.Slug);
+        await Javascript.InvokeVoidAsync("navigator.clipboard.writeText", text);
         Snackbar.Add("Copied!", Severity.Success, snackbar => snackbar.SnackbarVariant = Variant.Text);
     }
 }

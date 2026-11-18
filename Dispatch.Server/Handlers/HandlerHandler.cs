@@ -22,20 +22,18 @@ public sealed partial class HandlerHandler
     [GeneratedRegex("^[a-z0-9][a-z0-9-]{0,62}$")]
     private static partial Regex SlugPattern { get; }
 
-    public static async Task<Ok<HandlerData[]>> ListHandlers([FromServices] DispatchDatabaseContext context)
+    public static async Task<Ok<HandlerData[]>> ListHandlers(
+        [FromServices] DispatchDatabaseContext context,
+        [FromServices] EndpointAddress endpoints,
+        HttpContext http
+    )
     {
         var query = from handler in context.Handlers.AsNoTracking()
             orderby handler.CreatedAt descending
-            select new HandlerData(
-                handler.Id,
-                handler.Slug,
-                handler.Title,
-                handler.Description,
-                handler.CreatedAt,
-                handler.DeletedAt
-            );
+            select handler;
 
-        return Ok(await query.ToArrayAsync());
+        var handlers = await query.ToArrayAsync();
+        return Ok(handlers.Select(handler => handler.ToData(endpoints.For(http, handler.Slug))).ToArray());
     }
 
     public static async Task<Results<CreatedAtRoute, Conflict, ValidationProblem>> CreateHandler(
@@ -96,13 +94,15 @@ public sealed partial class HandlerHandler
 
     public static async Task<Results<Ok<HandlerData>, NotFound>> GetHandler(
         [FromServices] DispatchDatabaseContext context,
+        [FromServices] EndpointAddress endpoints,
+        HttpContext http,
         [FromRoute] Guid id
     )
     {
         var handler = await context.Handlers.FindAsync(id);
         if (handler is null) return NotFound();
 
-        return Ok(handler.ToData());
+        return Ok(handler.ToData(endpoints.For(http, handler.Slug)));
     }
 
     public static async Task<NoContent> DeleteHandler(

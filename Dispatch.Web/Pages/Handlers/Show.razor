@@ -46,33 +46,50 @@ else
 
             <MudSimpleTable Elevation="0" Class="mt-2">
                 <tbody>
-                <tr>
-                    <td class="mud-text-secondary">Slug</td>
-                    <td>
-                        <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
-                            <MudText Typo="Typo.body2">@Handler.Slug</MudText>
-                            <MudTooltip Text="Copy">
-                                <MudIconButton Icon="@Icons.Material.TwoTone.ContentCopy" Size="Size.Small"
-                                               OnClick="@CopySlug"/>
-                            </MudTooltip>
-                        </MudStack>
-                    </td>
-                </tr>
-                <tr>
-                    <td class="mud-text-secondary">Id</td>
-                    <td>@Handler.Id</td>
-                </tr>
-                <tr>
-                    <td class="mud-text-secondary">Created</td>
-                    <td>@Handler.CreatedAt.ToLocalTime().ToString("f")</td>
-                </tr>
-                @if (Dead)
-                {
                     <tr>
-                        <td class="mud-text-secondary">Deleted</td>
-                        <td>@Handler.DeletedAt!.Value.ToLocalTime().ToString("f")</td>
+                        <td class="mud-text-secondary">Slug</td>
+                        <td>
+                            <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
+                                <MudText Typo="Typo.body2">@Handler.Slug</MudText>
+                                <MudTooltip Text="Copy">
+                                    <MudIconButton Icon="@Icons.Material.TwoTone.ContentCopy" Size="Size.Small"
+                                                   OnClick="@(() => Copy(Handler.Slug))"/>
+                                </MudTooltip>
+                            </MudStack>
+                        </td>
                     </tr>
-                }
+                    <tr>
+                        <td class="mud-text-secondary">Id</td>
+                        <td>@Handler.Id</td>
+                    </tr>
+                    @if (!Dead)
+                    {
+                        <tr>
+                            <td class="mud-text-secondary">Endpoint</td>
+                            <td>
+                                <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
+                                    <MudText Typo="Typo.body2" Style="font-family: monospace; word-break: break-all">
+                                        @Handler.Endpoint
+                                    </MudText>
+                                    <MudTooltip Text="Copy">
+                                        <MudIconButton Icon="@Icons.Material.TwoTone.ContentCopy" Size="Size.Small"
+                                                       OnClick="@(() => Copy(Handler.Endpoint))"/>
+                                    </MudTooltip>
+                                </MudStack>
+                            </td>
+                        </tr>
+                    }
+                    <tr>
+                        <td class="mud-text-secondary">Created</td>
+                        <td>@Handler.CreatedAt.ToLocalTime().ToString("f")</td>
+                    </tr>
+                    @if (Dead)
+                    {
+                        <tr>
+                            <td class="mud-text-secondary">Deleted</td>
+                            <td>@Handler.DeletedAt!.Value.ToLocalTime().ToString("f")</td>
+                        </tr>
+                    }
                 </tbody>
             </MudSimpleTable>
         </MudPaper>
@@ -259,9 +276,9 @@ else
         }
     }
 
-    private async Task CopySlug()
+    private async Task Copy(string text)
     {
-        await Javascript.InvokeVoidAsync("navigator.clipboard.writeText", Handler!.Slug);
+        await Javascript.InvokeVoidAsync("navigator.clipboard.writeText", text);
         Snackbar.Add("Copied!", Severity.Success, snackbar => snackbar.SnackbarVariant = Variant.Text);
     }
 

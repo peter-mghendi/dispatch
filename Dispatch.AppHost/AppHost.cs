@@ -24,6 +24,9 @@ var server = builder.AddProject<Projects.Dispatch_Server>(name: "server")
     .WithHttpEndpoint(name: "http")
     .WithHttpHealthCheck(path: "/health", statusCode: (int)HttpStatusCode.OK);
 
+// The server's own address for handler endpoint URLs; the web app only sees it through the gateway's proxy.
+server.WithEnvironment("PublicUrl", server.GetEndpoint("https"));
+
 var web = builder.AddBlazorWasmProject<Projects.Dispatch_Web>(name: "web")
     .WithReference(server.GetEndpoint("http"));
 

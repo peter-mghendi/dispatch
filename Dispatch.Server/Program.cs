@@ -44,6 +44,7 @@ builder.Services.AddMemoryCache(options => options.SizeLimit = 256 * 1024 * 1024
 builder.Services.AddHostedService<HandlerCleanupService>();
 builder.Services.AddSingleton<HandlerStorage>();
 builder.Services.AddSingleton<HandlerRunner>();
+builder.Services.AddSingleton<EndpointAddress>();
 
 if (int.TryParse(Environment.GetEnvironmentVariable("PORT"), out var port))
 {
