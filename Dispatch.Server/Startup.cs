@@ -26,7 +26,7 @@ public static class Startup
             handlers.MapGet("{id:guid}", GetHandler).WithName(nameof(GetHandler));
             handlers.MapDelete("{id:guid}", DeleteHandler).WithName(nameof(DeleteHandler));
 
-            routes.MapMethods("/endpoints/{slug}/{path?}", [Delete, Get, Patch, Post, Put, Query], InvokeEndpoint)
+            routes.MapMethods("/endpoints/{slug}/{**path}", [Delete, Get, Patch, Post, Put, Query], InvokeEndpoint)
                 .WithName(nameof(InvokeEndpoint));
 
             return app;

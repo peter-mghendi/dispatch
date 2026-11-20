@@ -47,7 +47,7 @@ flowchart LR
     end
 
     DB[("PostgreSQL <br> handler metadata")]
-    S3[("RustFS <br> .wasm modules")]
+    S3[("S3-compatible storage <br> .wasm modules")]
 
     Web -->|manage + test| API
     Web -->|test| Invoke
@@ -173,9 +173,13 @@ The examples below use the server's local address, `https://localhost:10001`.
 | `GET` | `/handlers` | List handlers, newest first. |
 | `GET` | `/handlers/{id}` | Get a handler, including its endpoint URL. |
 | `DELETE` | `/handlers/{id}` | Delete a handler. |
-| `GET` `POST` `PUT` `PATCH` `DELETE` `QUERY` | `/endpoints/{slug}/{path?}` | Invoke a handler. |
+| `GET` `POST` `PUT` `PATCH` `DELETE` `QUERY` | `/endpoints/{slug}/{**path}` | Invoke a handler. |
 
 Slugs are 1-63 characters of `a-z`, `0-9`, and `-`, and can't start with `-`. If no slug is given, a random one is generated.
+
+> [!NOTE]
+> `HEAD`, `OPTIONS`, `TRACE`, and `CONNECT` are intentionally not passed to handlers.
+> ASP.NET Core responds to these itself, so the response is not guaranteed to be a `405 Method Not Allowed`. For example, CORS preflight `OPTIONS` requests are answered by the server's CORS policy.
 
 Upload a handler:
 
@@ -219,7 +223,6 @@ curl -X POST https://localhost:10001/endpoints/echo \
 ## Known issues
 
 - **Requests are slow.** WebAssembly modules are validated before each run, so each request takes a few seconds before the handler runs, and longer for larger modules.
-- **Only one path segment** after the slug is routed. `/endpoints/echo/a` works, but `/endpoints/echo/a/b` does not yet.
 - **Other toolchains are untested.** Components built with `wit-component`, such as those built with [componentize-go](https://github.com/bytecodealliance/componentize-go), are tested. Components from other toolchains may not load yet.
 
 ---
