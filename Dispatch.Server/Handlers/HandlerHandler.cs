@@ -40,7 +40,7 @@ public sealed partial class HandlerHandler
         [FromServices] DispatchDatabaseContext context,
         [FromServices] HandlerStorage storage,
         [FromForm] HandlerRequest request,
-        CancellationToken cancellation
+        CancellationToken ct
     )
     {
         var slug = request.Slug?.Trim() switch
@@ -59,30 +59,35 @@ public sealed partial class HandlerHandler
             return Error("file", $"Module must be 1 byte to {MaxWasmBytes / 1024 / 1024} MB.");
 
         var bytes = new byte[request.File.Length];
-        await using (var stream = request.File.OpenReadStream()) await stream.ReadExactlyAsync(bytes, cancellation);
+        await using (var stream = request.File.OpenReadStream()) await stream.ReadExactlyAsync(bytes, ct);
 
         if (bytes.Length < 8 || !bytes.AsSpan(0, 4).SequenceEqual("\0asm"u8))
             return ValidationProblem(new Dictionary<string, string[]> { ["file"] = ["Not a WebAssembly binary."] });
 
-        var hash = Convert.ToHexStringLower(SHA3_256.HashData(bytes));
+        var hash = HandlerStorage.Hash(bytes);
+        var handler = new Handler
+        {
+            Id = Guid.CreateVersion7(),
+            Slug = slug,
+            Title = request.Title.Trim(),
+            Description = request.Description,
+            ContentHash = hash,
+            ContentSize = bytes.Length,
+            CreatedAt = DateTimeOffset.UtcNow,
+        };
 
         try
         {
-            var handler = new Handler
+            await context.Database.CreateExecutionStrategy().ExecuteAsync(async cancellation =>
             {
-                Id = Guid.CreateVersion7(),
-                Slug = slug,
-                Title = request.Title.Trim(),
-                Description = request.Description,
-                ContentHash = hash,
-                ContentSize = bytes.Length,
-                CreatedAt = DateTimeOffset.UtcNow,
-            };
-            context.Handlers.Add(handler);
-            await context.SaveChangesAsync(cancellation);
+                await using var transaction = await context.BeginContentTransactionAsync(hash, cancellation);
 
-            using var body = new MemoryStream(bytes, writable: false);
-            await storage.StoreAsync(hash, body, cancellation);
+                context.Handlers.Add(handler);
+
+                await context.SaveChangesAsync(cancellation);
+                await storage.StoreAsync(bytes, cancellation);
+                await transaction.CommitAsync(cancellation);
+            }, ct);
 
             return CreatedAtRoute(nameof(GetHandler), new RouteValueDictionary { ["id"] = handler.Id });
         }
@@ -99,8 +104,7 @@ public sealed partial class HandlerHandler
         [FromRoute] Guid id
     )
     {
-        var handler = await context.Handlers.FindAsync(id);
-        if (handler is null) return NotFound();
+        if (await context.Handlers.FindAsync(id) is not {} handler) return NotFound();
 
         return Ok(handler.ToData(endpoints.For(http, handler.Slug)));
     }
@@ -110,7 +114,8 @@ public sealed partial class HandlerHandler
         [FromRoute] Guid id
     )
     {
-        await context.Handlers.Where(handler => handler.Id == id && handler.DeletedAt == null)
+        await context.Handlers
+            .Where(handler => handler.Id == id && handler.DeletedAt == null)
             .ExecuteUpdateAsync(setter => setter.SetProperty(handler => handler.DeletedAt, DateTimeOffset.UtcNow));
 
         return NoContent();

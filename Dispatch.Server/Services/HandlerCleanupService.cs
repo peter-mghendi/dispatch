@@ -1,5 +1,4 @@
 using Dispatch.Server.Data;
-using Dispatch.Server.Models;
 using Microsoft.EntityFrameworkCore;
 using PurgeResult = (int Rows, bool Referenced);
 
@@ -77,19 +76,19 @@ public class HandlerCleanupService(
         CancellationToken ct
     )
     {
-        var database = context.Database;
+        return await context.Database.CreateExecutionStrategy().ExecuteAsync(async cancellation =>
+        {
+            await using var transaction = await context.BeginContentTransactionAsync(hash, cancellation);
 
-        await using var transaction = await database.BeginTransactionAsync(ct);
-        await database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock(hashtextextended({hash}, 0))", ct);
+            var removed = await context.Handlers
+                .Where(h => h.ContentHash == hash && h.DeletedAt < cutoff)
+                .ExecuteDeleteAsync(cancellation);
 
-        var removed = await context.Handlers
-            .Where(h => h.ContentHash == hash && h.DeletedAt < cutoff)
-            .ExecuteDeleteAsync(ct);
+            var referenced = await context.Handlers.AnyAsync(h => h.ContentHash == hash, cancellation);
+            if (!referenced) await storage.DeleteAsync(hash, cancellation);
 
-        var referenced = await context.Handlers.AnyAsync(h => h.ContentHash == hash, ct);
-        if (!referenced) await storage.DeleteAsync(hash, ct);
-
-        await transaction.CommitAsync(ct);
-        return (Rows: removed, Referenced: referenced);
+            await transaction.CommitAsync(cancellation);
+            return (Rows: removed, Referenced: referenced);
+        }, ct);
     }
 }

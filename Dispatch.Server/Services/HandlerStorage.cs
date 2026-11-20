@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Security.Cryptography;
 using Amazon.S3;
 using Amazon.S3.Model;
 using Microsoft.Extensions.Caching.Memory;
@@ -6,15 +7,17 @@ using static System.Net.Mime.MediaTypeNames;
 
 namespace Dispatch.Server.Services;
 
-public sealed class HandlerStorage(IAmazonS3 s3, IMemoryCache cache)
+public sealed class HandlerStorage(IAmazonS3 store, IMemoryCache cache)
 {
     private const string BucketName = "dispatch";
     private static readonly TimeSpan CacheLifetime = TimeSpan.FromMinutes(10);
 
     private readonly ConcurrentDictionary<string, Lazy<Task<byte[]>>> _downloads = new();
 
-    public async Task StoreAsync(string hash, Stream input, CancellationToken cancellation = default)
+    public async Task StoreAsync(byte[] bytes, CancellationToken cancellation = default)
     {
+        using var input = new MemoryStream(bytes, writable: false);
+        var hash = Hash(bytes);
         var request = new PutObjectRequest {
             BucketName = BucketName,
             ContentType = Application.Wasm,
@@ -22,7 +25,7 @@ public sealed class HandlerStorage(IAmazonS3 s3, IMemoryCache cache)
             Key = Key(hash)
         };
 
-        await s3.PutObjectAsync(request, cancellation).ConfigureAwait(false);
+        await store.PutObjectAsync(request, cancellation).ConfigureAwait(false);
     }
 
     public async Task<byte[]> FetchAsync(string hash, CancellationToken cancellation = default)
@@ -35,27 +38,34 @@ public sealed class HandlerStorage(IAmazonS3 s3, IMemoryCache cache)
 
     public async Task DeleteAsync(string hash, CancellationToken cancellation = default)
     {
-        await s3.DeleteObjectAsync(BucketName, Key(hash), cancellation);
+        await store.DeleteObjectAsync(BucketName, Key(hash), cancellation);
         cache.Remove(Key(hash));
     }
 
     private async Task<byte[]> DownloadAsync(string hash)
     {
+        var key = Key(hash);
+
         try
         {
-            using var response = await s3.GetObjectAsync(BucketName, Key(hash));
+            using var response = await store.GetObjectAsync(BucketName, key);
             using var memory = new MemoryStream(capacity: (int)response.ContentLength);
+
             await response.ResponseStream.CopyToAsync(memory);
             var bytes = memory.ToArray();
 
-            cache.Set(Key(hash), bytes, new MemoryCacheEntryOptions { Size = bytes.Length, SlidingExpiration = CacheLifetime });
-            return bytes;
+            if (Hash(bytes) != hash) throw new InvalidDataException($"Stored module '{key}' does not match its hash.");
+
+            var options = new MemoryCacheEntryOptions { Size = bytes.Length, SlidingExpiration = CacheLifetime };
+            return cache.Set(key, bytes, options);
         }
         finally
         {
             _downloads.TryRemove(hash, out _);
         }
     }
+
+    public static string Hash(ReadOnlySpan<byte> bytes) => Convert.ToHexStringLower(SHA3_256.HashData(bytes));
 
     private static string Key(string hash) => $"handlers/{hash}.wasm";
 }
