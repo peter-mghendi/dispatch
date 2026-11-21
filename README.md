@@ -24,13 +24,25 @@ Handlers can be written in any language that compiles to a WebAssembly component
 ## Status
 
 dispatch is experimental. Handlers can be uploaded, invoked, and tested from the web UI.
+It is a proof of concept rather than a product, so some rough edges are expected to stay.
 
 - [x] Handler upload, listing, and deletion
 - [x] Request/response invocation through a WIT contract
 - [x] Sandboxed execution
+- [x] Execution timeout
+- [x] Content-hash verification of stored modules
+- [x] Module caching
 - [x] Web UI with a built-in request tester
 - [x] Copyable endpoint URLs
 - [x] Fuel metering
+- [ ] Fuel limits
+- [ ] Configurable limits per handler
+
+> [!NOTE]
+> Some things are left out on purpose:
+>
+> - **Authentication.** Anyone who can reach the server can manage and invoke handlers. If you need auth, put dispatch behind a gateway or reverse proxy that handles it.
+> - **Updating handlers.** Modules are immutable. To replace one, delete the handler and create it again once the slug is free (after the deleted handler is purged).
 
 ---
 
