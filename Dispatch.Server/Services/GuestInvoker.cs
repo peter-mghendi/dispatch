@@ -17,6 +17,7 @@ using Wacs.Core.Runtime;
 using Wacs.Core.Runtime.Types;
 using Wacs.WASI.Preview1;
 using Wacs.WASI.Preview2;
+using HandleCore = System.Func<int, int, int, int, int, int, int, int, int>;
 
 namespace Dispatch.Server.Services;
 
@@ -26,14 +27,18 @@ internal static class GuestInvoker
     private const string HarnessType = "Dispatch.Guest.DispatchHarness";
     private const string HarnessModule = "harness"; // HarnessLoader.Load registers the core module under this name
     private const string Preview1 = "wasi_snapshot_preview1";
+    private const string HandleExport = "dispatch:guest/handler@2.0.0#handle";
 
     private const BindingFlags Flags = BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase;
 
-    private static readonly Lazy<(MethodInfo LoadFrom, MethodInfo Handle)> Harness = new(Bind);
+    private static readonly Lazy<(MethodInfo LoadFrom, MethodInfo Handle, FieldInfo Core)> Harness = new(Bind);
 
-    public static HandlerRunner.Response Invoke(byte[] component, HandlerRunner.Request request)
+    // WACS only counts executed instructions (fuel) when a limit is set, so set one that can't be reached.
+    private static InvokerOptions Metered => new() { GasLimit = long.MaxValue };
+
+    public static (HandlerRunner.Response Response, HandlerRunner.Fuel Fuel) Invoke(byte[] component, HandlerRunner.Request request)
     {
-        var (loadFrom, handle) = Harness.Value;
+        var (loadFrom, handle, core) = Harness.Value;
         using var preview1 = new Wasi(Sandbox());
         WasmRuntime? runtime = null;
 
@@ -43,10 +48,29 @@ internal static class GuestInvoker
             // TODO: [Cache] Maybe cache instances later
             var instance = loadFrom.Invoke(null, [component, (Action<WasmRuntime>)(bound => BindImports(runtime = bound, preview1))]);
 
+            var loaded = runtime!;
+            long initializeFuel = 0, handlerFuel = 0;
+
             // WASI reactors (e.g. Go's wasip1 c-shared) must run _initialize before any other export.
             // A component instantiation would do this; the harness instantiates the core module directly.
-            if (runtime!.TryGetExportedFunction((HarnessModule, "_initialize"), out var initialize))
-                runtime.CreateInvokerAction(initialize)();
+            if (loaded.TryGetExportedFunction((HarnessModule, "_initialize"), out var initialize))
+            {
+                loaded.CreateInvokerAction(initialize, Metered)();
+                initializeFuel = loaded.ExecContext.steps;
+            }
+
+            // The harness calls handle through an unmetered invoker, then calls post-return, which resets the
+            // count. Swap in a metered invoker that reads the count as soon as handle itself returns.
+            if (!loaded.TryGetExportedFunction((HarnessModule, HandleExport), out var export))
+                throw new InvalidOperationException($"The component does not export '{HandleExport}'.");
+
+            var metered = loaded.CreateInvokerFunc<int, int, int, int, int, int, int, int, int>(export, Metered);
+            core.SetValue(instance, (HandleCore)((a0, a1, a2, a3, a4, a5, a6, a7) =>
+            {
+                var result = metered(a0, a1, a2, a3, a4, a5, a6, a7);
+                handlerFuel = loaded.ExecContext.steps;
+                return result;
+            }));
 
             var input = Build(
                 handle.GetParameters()[0].ParameterType,
@@ -62,7 +86,7 @@ internal static class GuestInvoker
             var output = handle.Invoke(instance, [input])
                          ?? throw new InvalidOperationException("The handler returned null.");
 
-            return Read(output);
+            return (Read(output), new HandlerRunner.Fuel(initializeFuel, handlerFuel));
         }
         catch (TargetInvocationException e) when (e.InnerException is not null)
         {
@@ -109,7 +133,7 @@ internal static class GuestInvoker
         AllowNetworkSockets = false,
     };
 
-    private static (MethodInfo LoadFrom, MethodInfo Handle) Bind()
+    private static (MethodInfo LoadFrom, MethodInfo Handle, FieldInfo Core) Bind()
     {
         var path = Path.Combine(AppContext.BaseDirectory, HarnessAssembly);
         var assembly = AssemblyLoadContext.Default.LoadFromAssemblyPath(path);
@@ -135,7 +159,14 @@ internal static class GuestInvoker
         if (handle.GetParameters().Length != 1)
             throw Mismatch("a Handle method taking a single request", loadFrom.ReturnType);
 
-        return (loadFrom, handle);
+        // The delegate the harness calls handle's core export through, replaced per instance to meter it.
+        var core = loadFrom.ReturnType.GetFields(BindingFlags.NonPublic | BindingFlags.Instance)
+                       .Where(field => field.Name.StartsWith("_invoke_", StringComparison.Ordinal))
+                       .ToArray() is [var invoker] && invoker.FieldType == typeof(HandleCore)
+            ? invoker
+            : throw Mismatch($"exactly one private '_invoke_*' field of type {typeof(HandleCore)}", loadFrom.ReturnType);
+
+        return (loadFrom, handle, core);
     }
 
     private static object Build(Type type, Dictionary<string, object?> values)

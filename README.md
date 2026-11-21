@@ -30,6 +30,7 @@ dispatch is experimental. Handlers can be uploaded, invoked, and tested from the
 - [x] Sandboxed execution
 - [x] Web UI with a built-in request tester
 - [x] Copyable endpoint URLs
+- [x] Fuel metering
 
 ---
 
@@ -65,6 +66,20 @@ flowchart LR
 3. **Respond.** The module's `response` record is written back as the HTTP status, headers, and body.
 
 Deleted handlers return `404` and are purged after a week.
+
+### Fuel
+
+Every invocation is metered in **fuel**: roughly one unit per WebAssembly instruction the guest executes.
+Time spent in host calls, such as WASI imports, isn't counted.
+Fuel is counted separately for the module's `_initialize` export (if it has one) and for `handle`, and both are logged at `Debug` level with the response status and elapsed time:
+
+```
+Completed: status=200 elapsed_ms=2140 initialize_fuel=181204 handle_fuel=9873
+```
+
+Fuel is only measured for now. It does not limit how long a handler can run; the 60-second timeout does that.
+Runtimes charge fuel slightly differently, so counts aren't directly comparable between them.
+Wasmtime's [Interrupting Execution](https://docs.wasmtime.dev/examples-interrupting-wasm.html) guide explains fuel and how it compares to epoch-based interruption.
 
 ---
 

@@ -17,14 +17,14 @@ public sealed class HandlerRunner(HandlerStorage storage, ILogger<HandlerRunner>
             handler.ContentSize
         );
         var component = await storage.FetchAsync(handler.ContentHash, cancellation);
-        logger.LogDebug("Loaded {Bytes} bytes.", component.Length);
+        logger.LogDebug("Loaded {Bytes} bytes", component.Length);
 
         var input = request with { Path = "/" + (request.Path ?? string.Empty).TrimStart('/') };
 
         var timer = Stopwatch.StartNew();
         try
         {
-            var response = await Task.Run(() => GuestInvoker.Invoke(component, input), cancellation)
+            var (response, fuel) = await Task.Run(() => GuestInvoker.Invoke(component, input), cancellation)
                 .WaitAsync(ExecutionTimeout, cancellation);
 
             if (response.Status is < 100 or > 599)
@@ -33,7 +33,13 @@ public sealed class HandlerRunner(HandlerStorage storage, ILogger<HandlerRunner>
                 return Failure(502, "Handler returned an invalid status code.");
             }
 
-            logger.LogInformation("Handler returned {Status} in {Elapsed} ms.", response.Status, timer.ElapsedMilliseconds);
+            logger.LogDebug(
+                "status={Status} elapsed_ms={Elapsed} initialize_fuel={InitializeFuel} handle_fuel={HandlerFuel}",
+                response.Status,
+                timer.ElapsedMilliseconds,
+                fuel.Initialize,
+                fuel.Handle
+            );
             return response;
         }
         catch (TimeoutException)
@@ -54,4 +60,7 @@ public sealed class HandlerRunner(HandlerStorage storage, ILogger<HandlerRunner>
     public sealed record Request(string Method, string? Path, (string Name, string Value)[] Headers, byte[] Body);
 
     public sealed record Response(int Status, (string Name, string Value)[] Headers, byte[] Body);
+
+    /// <summary>Instructions the guest executed in its _initialize export and in handle.</summary>
+    public sealed record Fuel(long Initialize, long Handle);
 }
